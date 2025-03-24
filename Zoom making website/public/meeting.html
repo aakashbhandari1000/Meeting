@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Conference Meeting</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="meeting-container">
+        <!-- Meeting Header -->
+        <div class="meeting-header">
+            <div class="meeting-info">
+                <h2 id="meeting-title">Meeting Title</h2>
+                <p id="meeting-id"></p>
+                <button id="copy-link" class="btn-secondary">
+                    <i class="fas fa-copy"></i> Copy Meeting Link
+                </button>
+            </div>
+            <div class="meeting-controls">
+                <button id="leave-meeting" class="btn-danger">
+                    <i class="fas fa-phone-slash"></i> Leave
+                </button>
+                <button id="end-meeting" class="btn-danger hidden">
+                    <i class="fas fa-times-circle"></i> End Meeting
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Meeting Content -->
+        <div class="meeting-content">
+            <!-- Video Grid -->
+            <div class="video-grid" id="video-grid">
+                <!-- Video elements will be added here dynamically -->
+            </div>
+
+            <!-- Meeting Sidebar -->
+            <div class="meeting-sidebar">
+                <!-- Participants List -->
+                <div class="participants-list">
+                    <h3>Participants</h3>
+                    <ul id="participants-list"></ul>
+                </div>
+
+                <!-- Chat Container -->
+                <div class="chat-container">
+                    <div class="chat-messages" id="chat-messages"></div>
+                    <div class="chat-input">
+                        <input type="text" id="message-input" placeholder="Type a message...">
+                        <button id="send-message">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meeting Controls Bar -->
+        <div class="meeting-controls-bar">
+            <button id="toggle-audio" class="control-btn">
+                <i class="fas fa-microphone"></i>
+            </button>
+            <button id="toggle-video" class="control-btn">
+                <i class="fas fa-video"></i>
+            </button>
+            <button id="toggle-screen" class="control-btn">
+                <i class="fas fa-desktop"></i>
+            </button>
+            <button id="toggle-chat" class="control-btn">
+                <i class="fas fa-comments"></i>
+            </button>
+            <button id="participants-btn" class="control-btn">
+                <i class="fas fa-users"></i>
+            </button>
+            <button id="reactions-btn" class="control-btn">
+                <i class="fas fa-smile"></i>
+            </button>
+            <button id="more-btn" class="control-btn">
+                <i class="fas fa-ellipsis-h"></i>
+            </button>
+        </div>
+
+        <!-- Modals -->
+        <!-- Participants Modal -->
+        <div id="participants-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Participants</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="participants-controls">
+                    <button id="mute-all" class="btn-secondary">
+                        <i class="fas fa-microphone-slash"></i> Mute All
+                    </button>
+                </div>
+                <ul id="participants-list-modal" class="participants-list-detailed"></ul>
+            </div>
+        </div>
+
+        <!-- Reactions Modal -->
+        <div id="reactions-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Reactions</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="reactions-grid">
+                    <button class="reaction-btn" data-emoji="👍">👍</button>
+                    <button class="reaction-btn" data-emoji="👏">👏</button>
+                    <button class="reaction-btn" data-emoji="❤️">❤️</button>
+                    <button class="reaction-btn" data-emoji="😊">😊</button>
+                    <button class="reaction-btn" data-emoji="😂">😂</button>
+                    <button class="reaction-btn" data-emoji="✋">✋</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- More Options Modal -->
+        <div id="more-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>More Options</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="more-options">
+                    <button id="start-recording" class="option-btn">
+                        <i class="fas fa-record-vinyl"></i>
+                        Start Recording
+                    </button>
+                    <button id="virtual-bg" class="option-btn">
+                        <i class="fas fa-image"></i>
+                        Virtual Background
+                    </button>
+                    <button id="toggle-transcription" class="option-btn">
+                        <i class="fas fa-closed-captioning"></i>
+                        Start Transcription
+                    </button>
+                    <button id="meeting-settings" class="option-btn">
+                        <i class="fas fa-cog"></i>
+                        Meeting Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Virtual Background Modal -->
+        <div id="virtual-bg-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Virtual Background</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="background-preview">
+                    <video id="bg-preview" autoplay playsinline muted></video>
+                </div>
+                <div class="background-options">
+                    <button class="bg-option" data-bg="none">
+                        <i class="fas fa-ban"></i>
+                        None
+                    </button>
+                    <button class="bg-option" data-bg="blur">
+                        <i class="fas fa-blur"></i>
+                        Blur
+                    </button>
+                    <!-- Add more background options here -->
+                </div>
+                <div class="background-upload">
+                    <input type="file" id="bg-upload" accept="image/*" hidden>
+                    <button id="upload-bg" class="btn-secondary">
+                        <i class="fas fa-upload"></i>
+                        Upload Image
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/webrtc-utils.js"></script>
+    <script type="module" src="js/meeting-manager.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html> 

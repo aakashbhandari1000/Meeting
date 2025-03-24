@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Conference App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-tabs">
+                <button class="tab-btn active" data-tab="login">Login</button>
+                <button class="tab-btn" data-tab="signup">Sign Up</button>
+                <button class="tab-btn" data-tab="guest">Join as Guest</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form">
+                <input type="email" placeholder="Email" required>
+                <input type="password" placeholder="Password" required>
+                <button type="submit">Login</button>
+                <div class="social-auth">
+                    <p>Or login with</p>
+                    <div class="social-buttons">
+                        <button type="button" class="social-btn google">
+                            <i class="fab fa-google"></i>
+                            Google
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Sign Up Form -->
+            <form id="signup-form" class="auth-form hidden">
+                <input type="text" placeholder="Full Name" required>
+                <input type="email" placeholder="Email" required>
+                <input type="password" placeholder="Password" required>
+                <input type="password" placeholder="Confirm Password" required>
+                <button type="submit">Sign Up</button>
+                <div class="social-auth">
+                    <p>Or sign up with</p>
+                    <div class="social-buttons">
+                        <button type="button" class="social-btn google">
+                            <i class="fab fa-google"></i>
+                            Google
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Guest Join Form -->
+            <form id="guest-form" class="auth-form hidden">
+                <input type="text" placeholder="Your Name" required>
+                <input type="text" placeholder="Meeting ID" required>
+                <input type="password" placeholder="Meeting Password (if required)">
+                <button type="submit">Join Meeting</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard (shown after authentication) -->
+    <div class="dashboard-container hidden">
+        <div class="dashboard-header">
+            <h1>Welcome, <span id="user-name">User</span></h1>
+            <div class="user-menu">
+                <span id="user-email"></span>
+                <button id="logout-btn" class="btn-secondary">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </button>
+            </div>
+        </div>
+
+        <div class="dashboard-content">
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <button id="new-meeting" class="btn-primary">
+                    <i class="fas fa-video"></i>
+                    New Meeting
+                </button>
+                <div class="join-meeting">
+                    <input type="text" id="join-id" placeholder="Enter Meeting ID">
+                    <button id="join-btn" class="btn-secondary">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Join
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scheduled Meetings -->
+            <div class="meetings-section">
+                <h2>Scheduled Meetings</h2>
+                <div class="meetings-grid" id="scheduled-meetings">
+                    <!-- Meeting cards will be added here dynamically -->
+                </div>
+            </div>
+
+            <!-- Recent Meetings -->
+            <div class="meetings-section">
+                <h2>Recent Meetings</h2>
+                <div class="meetings-grid" id="recent-meetings">
+                    <!-- Meeting cards will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Meeting Modal -->
+    <div id="new-meeting-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Schedule New Meeting</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="new-meeting-form">
+                <div class="form-group">
+                    <label>Meeting Title</label>
+                    <input type="text" id="meeting-title" required>
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="meeting-date" required>
+                </div>
+                <div class="form-group">
+                    <label>Time</label>
+                    <input type="time" id="meeting-time" required>
+                </div>
+                <div class="form-group">
+                    <label>Duration (minutes)</label>
+                    <input type="number" id="meeting-duration" min="15" step="15" value="60">
+                </div>
+                <div class="form-group">
+                    <label>Meeting Password (optional)</label>
+                    <input type="password" id="meeting-password">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="waiting-room">
+                        Enable Waiting Room
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary modal-close">Cancel</button>
+                    <button type="submit" class="btn-primary">Create Meeting</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+        import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword, 
+            signInWithPopup,
+            GoogleAuthProvider,
+            signOut, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getDatabase } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA31cRyEmbW3UuiF6vNjB9Jt9Sf-hkPrzk",
+            authDomain: "meeting-72433.firebaseapp.com",
+            databaseURL: "https://meeting-72433-default-rtdb.firebaseio.com",
+            projectId: "meeting-72433",
+            storageBucket: "meeting-72433.firebasestorage.app",
+            messagingSenderId: "30125020621",
+            appId: "1:30125020621:web:ad2a35ff43b5e6e4be2084",
+            measurementId: "G-5ZM145V700"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const rtdb = getDatabase(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        // Export Firebase instances
+        window.firebaseApp = {
+            app,
+            auth,
+            db,
+            rtdb,
+            googleProvider
+        };
+    </script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/dashboard.js"></script>
+</body>
+</html> 

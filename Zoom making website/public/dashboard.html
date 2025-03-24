@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Conference App - Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1>Video Conference App</h1>
+            </div>
+            <div class="header-right">
+                <div class="user-menu">
+                    <span id="user-display"></span>
+                    <button id="logout-btn" class="btn-secondary">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-content">
+            <!-- Quick Actions -->
+            <section class="quick-actions">
+                <button id="new-meeting" class="btn-primary">
+                    <i class="fas fa-video"></i>
+                    New Meeting
+                </button>
+                <div class="join-meeting">
+                    <input type="text" id="meeting-code" placeholder="Enter meeting code">
+                    <button id="join-meeting" class="btn-secondary">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Join
+                    </button>
+                </div>
+            </section>
+
+            <!-- Meeting History -->
+            <section class="meetings-section">
+                <h2>Recent Meetings</h2>
+                <div class="meetings-grid" id="meetings-grid">
+                    <!-- Meeting cards will be added here dynamically -->
+                </div>
+            </section>
+
+            <!-- Scheduled Meetings -->
+            <section class="scheduled-meetings">
+                <h2>Scheduled Meetings</h2>
+                <div class="scheduled-meetings-list" id="scheduled-meetings">
+                    <!-- Scheduled meetings will be added here dynamically -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- New Meeting Modal -->
+    <div id="new-meeting-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Schedule New Meeting</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="schedule-meeting-form">
+                <div class="form-group">
+                    <label for="meeting-title">Meeting Title</label>
+                    <input type="text" id="meeting-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="meeting-date">Date</label>
+                    <input type="date" id="meeting-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="meeting-time">Time</label>
+                    <input type="time" id="meeting-time" required>
+                </div>
+                <div class="form-group">
+                    <label for="meeting-duration">Duration (minutes)</label>
+                    <input type="number" id="meeting-duration" min="15" step="15" value="60">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="require-password">
+                        Require meeting password
+                    </label>
+                </div>
+                <div class="form-group hidden" id="password-group">
+                    <label for="meeting-password">Meeting Password</label>
+                    <input type="text" id="meeting-password">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancel-schedule">Cancel</button>
+                    <button type="submit" class="btn-primary">Schedule Meeting</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+        import { 
+            getAuth, 
+            signOut, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            query, 
+            where, 
+            orderBy, 
+            getDocs,
+            addDoc,
+            Timestamp 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA31cRyEmbW3UuiF6vNjB9Jt9Sf-hkPrzk",
+            authDomain: "meeting-72433.firebaseapp.com",
+            databaseURL: "https://meeting-72433-default-rtdb.firebaseio.com",
+            projectId: "meeting-72433",
+            storageBucket: "meeting-72433.firebasestorage.app",
+            messagingSenderId: "30125020621",
+            appId: "1:30125020621:web:ad2a35ff43b5e6e4be2084",
+            measurementId: "G-5ZM145V700"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const rtdb = getDatabase(app);
+
+        // UI Elements
+        const userDisplay = document.getElementById('user-display');
+        const logoutBtn = document.getElementById('logout-btn');
+        const newMeetingBtn = document.getElementById('new-meeting');
+        const joinMeetingBtn = document.getElementById('join-meeting');
+        const meetingCodeInput = document.getElementById('meeting-code');
+        const newMeetingModal = document.getElementById('new-meeting-modal');
+        const scheduleMeetingForm = document.getElementById('schedule-meeting-form');
+        const requirePasswordCheckbox = document.getElementById('require-password');
+        const passwordGroup = document.getElementById('password-group');
+        const meetingsGrid = document.getElementById('meetings-grid');
+        const scheduledMeetingsList = document.getElementById('scheduled-meetings');
+
+        // Check Authentication State
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userDisplay.textContent = user.email;
+                loadMeetings(user.uid);
+                loadScheduledMeetings(user.uid);
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // Logout
+        logoutBtn.addEventListener('click', () => {
+            signOut(auth).then(() => {
+                window.location.href = 'index.html';
+            });
+        });
+
+        // New Meeting
+        newMeetingBtn.addEventListener('click', () => {
+            newMeetingModal.classList.remove('hidden');
+        });
+
+        // Join Meeting
+        joinMeetingBtn.addEventListener('click', () => {
+            const meetingCode = meetingCodeInput.value.trim();
+            if (meetingCode) {
+                window.location.href = `meeting.html?id=${meetingCode}`;
+            }
+        });
+
+        // Modal Close Button
+        document.querySelector('.modal-close').addEventListener('click', () => {
+            newMeetingModal.classList.add('hidden');
+        });
+
+        // Password Requirement Toggle
+        requirePasswordCheckbox.addEventListener('change', () => {
+            passwordGroup.classList.toggle('hidden', !requirePasswordCheckbox.checked);
+        });
+
+        // Schedule Meeting Form
+        scheduleMeetingForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const user = auth.currentUser;
+            
+            if (user) {
+                const meetingData = {
+                    title: document.getElementById('meeting-title').value,
+                    date: document.getElementById('meeting-date').value,
+                    time: document.getElementById('meeting-time').value,
+                    duration: document.getElementById('meeting-duration').value,
+                    requirePassword: requirePasswordCheckbox.checked,
+                    password: requirePasswordCheckbox.checked ? document.getElementById('meeting-password').value : null,
+                    hostId: user.uid,
+                    createdAt: Timestamp.now(),
+                    status: 'scheduled'
+                };
+
+                try {
+                    await addDoc(collection(db, 'meetings'), meetingData);
+                    newMeetingModal.classList.add('hidden');
+                    loadScheduledMeetings(user.uid);
+                    scheduleMeetingForm.reset();
+                } catch (error) {
+                    console.error('Error scheduling meeting:', error);
+                }
+            }
+        });
+
+        // Load Recent Meetings
+        async function loadMeetings(userId) {
+            const meetingsQuery = query(
+                collection(db, 'meetings'),
+                where('hostId', '==', userId),
+                where('status', '==', 'ended'),
+                orderBy('createdAt', 'desc')
+            );
+
+            try {
+                const querySnapshot = await getDocs(meetingsQuery);
+                meetingsGrid.innerHTML = '';
+                
+                querySnapshot.forEach((doc) => {
+                    const meeting = doc.data();
+                    const meetingCard = createMeetingCard(meeting);
+                    meetingsGrid.appendChild(meetingCard);
+                });
+            } catch (error) {
+                console.error('Error loading meetings:', error);
+            }
+        }
+
+        // Load Scheduled Meetings
+        async function loadScheduledMeetings(userId) {
+            const scheduledQuery = query(
+                collection(db, 'meetings'),
+                where('hostId', '==', userId),
+                where('status', '==', 'scheduled'),
+                orderBy('date')
+            );
+
+            try {
+                const querySnapshot = await getDocs(scheduledQuery);
+                scheduledMeetingsList.innerHTML = '';
+                
+                querySnapshot.forEach((doc) => {
+                    const meeting = doc.data();
+                    const meetingItem = createScheduledMeetingItem(meeting);
+                    scheduledMeetingsList.appendChild(meetingItem);
+                });
+            } catch (error) {
+                console.error('Error loading scheduled meetings:', error);
+            }
+        }
+
+        // Create Meeting Card
+        function createMeetingCard(meeting) {
+            const card = document.createElement('div');
+            card.className = 'meeting-card';
+            card.innerHTML = `
+                <div class="meeting-card-header">
+                    <h3>${meeting.title || 'Untitled Meeting'}</h3>
+                    <span class="meeting-date">${new Date(meeting.createdAt.toDate()).toLocaleDateString()}</span>
+                </div>
+                <div class="meeting-card-content">
+                    <p>Duration: ${meeting.duration} minutes</p>
+                    <p>Participants: ${meeting.participantCount || 0}</p>
+                </div>
+                <div class="meeting-card-actions">
+                    <button class="btn-secondary" onclick="window.location.href='meeting.html?id=${meeting.id}'">
+                        <i class="fas fa-video"></i> Rejoin
+                    </button>
+                </div>
+            `;
+            return card;
+        }
+
+        // Create Scheduled Meeting Item
+        function createScheduledMeetingItem(meeting) {
+            const item = document.createElement('div');
+            item.className = 'scheduled-meeting-item';
+            item.innerHTML = `
+                <div class="meeting-info">
+                    <h3>${meeting.title}</h3>
+                    <p>
+                        <i class="far fa-calendar"></i> ${meeting.date} at ${meeting.time}
+                        <span class="duration">${meeting.duration} mins</span>
+                    </p>
+                </div>
+                <div class="meeting-actions">
+                    <button class="btn-secondary" onclick="window.location.href='meeting.html?id=${meeting.id}'">
+                        Start
+                    </button>
+                </div>
+            `;
+            return item;
+        }
+    </script>
+</body>
+</html> 
